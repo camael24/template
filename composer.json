@@ -8,7 +8,7 @@
             "email": "yoan@dosimple.ch"
         }
     ],
-    "autload": {
+    "autoload": {
         "classmap": ["src/"]
     }
 }
