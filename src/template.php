@@ -36,6 +36,7 @@ namespace greut\template {
         private $blocknames = array();
         private $caches = array();
         private $args = array();
+        private $currentArguments = array();
         public $globals = array();
 
         function __construct($base, $globals = null, $ext = ".tpl.php")
@@ -157,6 +158,7 @@ namespace greut\template {
                 // used by the placeholder
                 array_unshift($this->args, $args);
 
+                $this->currentArguments = $args;
                 ob_start("mb_output_handler");
                 extract($args);
                 include($file);
@@ -170,6 +172,7 @@ namespace greut\template {
                     $content = $this->{$inherit}($args);
                 }
 
+
                 // pop the context
                 array_pop($this->paths);
 
@@ -177,6 +180,11 @@ namespace greut\template {
             } else {
                 throw new \Exception("File not found ($file)");
             }
+        }
+
+        public function getCurrentArguments()
+        {
+            return $this->currentArguments;
         }
     }
 }
