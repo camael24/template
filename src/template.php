@@ -26,148 +26,158 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+namespace greut\template {
+    class Template
+    {
+        private $paths = array();
+        private $headers = array();
+        private $inherits = array();
+        private $blocks = array();
+        private $blocknames = array();
+        private $caches = array();
+        private $args = array();
+        public $globals = array();
 
-class Template {
-    private $paths = array();
-    private $headers = array();
-    private $inherits = array();
-    private $blocks = array();
-    private $blocknames = array();
-    private $caches = array();
-    private $args = array();
-    public $globals = array();
+        function __construct($base, $globals = null, $ext = ".tpl.php")
+        {
+            $this->paths[] = $base . "/";
+            $this->ext     = $ext;
 
-    function __construct($base, $globals = null, $ext = ".tpl.php") {
-        $this->paths[] = $base."/";
-        $this->ext = $ext;
-
-        $this->globals = (array)$globals;
-    }
-
-    function httpHeader() {
-        $args = func_get_args();
-        $this->headers[] = $args;
-    }
-
-    function applyHeaders() {
-        foreach($this->headers as $header) {
-            call_user_func_array("header", $header);
+            $this->globals = (array)$globals;
         }
-    }
 
-    function inherits($name) {
-        $this->inherits[$this->file][] = $name;
-    }
+        function httpHeader()
+        {
+            $args            = func_get_args();
+            $this->headers[] = $args;
+        }
 
-    function block($blockname, $mode="replace") {
-        $this->blocknames[] = array($blockname, $mode);
-        ob_start("mb_output_handler");
-    }
-
-    function endblock() {
-        list($blockname, $mode) = array_pop($this->blocknames);
-
-        if(!isset($this->blocks[$blockname]) && $mode !== false) {
-            $this->blocks[$blockname] = array("content" => ob_get_contents(), "mode" => $mode);
-        } else {
-            switch($this->blocks[$blockname]["mode"]) {
-                case "before":
-                case "prepend":
-                    $this->blocks[$blockname] = array(
-                        "content" => $this->blocks[$blockname]["content"] . ob_get_contents(),
-                        "mode" => $mode
-                    );
-                    break;
-                case "after":
-                case "append":
-                    $this->blocks[$blockname] = array(
-                        "content" => ob_get_contents() . $this->blocks[$blockname]["content"],
-                        "mode" => $mode
-                    );                                 
-                    break;
+        function applyHeaders()
+        {
+            foreach ($this->headers as $header) {
+                call_user_func_array("header", $header);
             }
         }
 
-        ob_end_clean();
-
-        if($mode === "replace") {
-            echo $this->blocks[$blockname]["content"];
+        function inherits($name)
+        {
+            $this->inherits[$this->file][] = $name;
         }
-    }
 
-    function cache($name, $ttl=3600) {
-        $key = "template_".$name;
-        $cache = apc_fetch($key, $success);
-        if(!$success) {
-            // randomize it a little bit (+/- 10%)
-            // so when they don't all expires at the
-            // same time
-            $ttl += rand(-$ttl * .1, $ttl * .1);
-
-            $this->caches[] = array($key, $ttl);
+        function block($blockname, $mode = "replace")
+        {
+            $this->blocknames[] = array($blockname, $mode);
             ob_start("mb_output_handler");
-            return $success;
-        } else {
-            return $cache;
         }
-    }
 
-    function endcache() {
-        $data = ob_get_contents();
+        function endblock()
+        {
+            list($blockname, $mode) = array_pop($this->blocknames);
 
-        ob_end_clean();
-
-        list($key, $ttl) = array_pop($this->caches);
-        apc_store($key, $data, $ttl);
-        echo $data;
-    }
-
-    function __call($name, $arguments) {
-        // take current context
-        $base = $this->paths[count($this->paths) - 1];
-        $path = dirname($name);
-        if($path !== ".") {
-            $base .= $path . "/";
-            $name = basename($name);
-        }
-        // push current context
-        $this->paths[] = $base;
-
-        $file = $base.$name.$this->ext;
-        if(file_exists($file)) {
-            // prepare
-            if(count($arguments) === 0) {
-                $arguments[0] = array();
+            if (!isset($this->blocks[$blockname]) && $mode !== false) {
+                $this->blocks[$blockname] = array("content" => ob_get_contents(), "mode" => $mode);
+            } else {
+                switch ($this->blocks[$blockname]["mode"]) {
+                    case "before":
+                    case "prepend":
+                        $this->blocks[$blockname] = array(
+                            "content" => $this->blocks[$blockname]["content"] . ob_get_contents(),
+                            "mode"    => $mode
+                        );
+                        break;
+                    case "after":
+                    case "append":
+                        $this->blocks[$blockname] = array(
+                            "content" => ob_get_contents() . $this->blocks[$blockname]["content"],
+                            "mode"    => $mode
+                        );
+                        break;
+                }
             }
 
-            $args = array_merge((array)$this->globals, $arguments[0]);
-
-            $this->file = $file;
-            $this->inherits[$file] = array();
-            // used by the placeholder
-            array_unshift($this->args, $args);
-
-            ob_start("mb_output_handler");
-            extract($args);
-            include($file);
-
-            // restore args
-            $args = array_shift($this->args);
-            $content = ob_get_contents();
             ob_end_clean();
 
-            while($inherit = array_pop($this->inherits[$file])) {
-                $content = $this->{$inherit}($args);
+            if ($mode === "replace") {
+                echo $this->blocks[$blockname]["content"];
             }
+        }
 
-            // pop the context
-            array_pop($this->paths);
+        function cache($name, $ttl = 3600)
+        {
+            $key   = "template_" . $name;
+            $cache = apc_fetch($key, $success);
+            if (!$success) {
+                // randomize it a little bit (+/- 10%)
+                // so when they don't all expires at the
+                // same time
+                $ttl += rand(-$ttl * .1, $ttl * .1);
 
-            return $content;
-        } else {
-            throw new Exception("File not found ($file)");
+                $this->caches[] = array($key, $ttl);
+                ob_start("mb_output_handler");
+                return $success;
+            } else {
+                return $cache;
+            }
+        }
+
+        function endcache()
+        {
+            $data = ob_get_contents();
+
+            ob_end_clean();
+
+            list($key, $ttl) = array_pop($this->caches);
+            apc_store($key, $data, $ttl);
+            echo $data;
+        }
+
+        function __call($name, $arguments)
+        {
+            // take current context
+            $base = $this->paths[count($this->paths) - 1];
+            $path = dirname($name);
+            if ($path !== ".") {
+                $base .= $path . "/";
+                $name = basename($name);
+            }
+            // push current context
+            $this->paths[] = $base;
+
+            $file = $base . $name . $this->ext;
+            if (file_exists($file)) {
+                // prepare
+                if (count($arguments) === 0) {
+                    $arguments[0] = array();
+                }
+
+                $args = array_merge((array)$this->globals, $arguments[0]);
+
+                $this->file            = $file;
+                $this->inherits[$file] = array();
+                // used by the placeholder
+                array_unshift($this->args, $args);
+
+                ob_start("mb_output_handler");
+                extract($args);
+                include($file);
+
+                // restore args
+                $args    = array_shift($this->args);
+                $content = ob_get_contents();
+                ob_end_clean();
+
+                while ($inherit = array_pop($this->inherits[$file])) {
+                    $content = $this->{$inherit}($args);
+                }
+
+                // pop the context
+                array_pop($this->paths);
+
+                return $content;
+            } else {
+                throw new Exception("File not found ($file)");
+            }
         }
     }
 }
-
 ?>

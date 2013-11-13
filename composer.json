@@ -1,0 +1,14 @@
+{
+    "name": "greut/template",
+    "description": "PHP templating system that let you using nothing but PHP (inheritance, caching, blocks, inclusions, …)",
+    "minimum-stability": "stable",
+    "authors": [
+        {
+            "name": "Yoan Blanc ",
+            "email": "yoan@dosimple.ch"
+        }
+    ],
+    "autload": {
+        "classmap": ["src/"]
+    }
+}
