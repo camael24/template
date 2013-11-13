@@ -175,9 +175,8 @@ namespace greut\template {
 
                 return $content;
             } else {
-                throw new Exception("File not found ($file)");
+                throw new \Exception("File not found ($file)");
             }
         }
     }
 }
-?>
